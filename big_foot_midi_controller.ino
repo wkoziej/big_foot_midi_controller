@@ -47,26 +47,6 @@ enum SwitchModeButton {
   SwitchModeButtonCount
 };
 
-const char *commandDesc [SwitchFnButtonCount * ModeCount] = {
-  "RC",
-  "OV",
-  "MU",
-  "RS",
-  "RV",
-  
-  "A",
-  "B",
-  "C",
-  "D",
-  "E",
-  
-  "F",
-  "G",
-  "H",
-  "I",
-  "J" 
-};
-
 int commandChannel = 9;
 int PROGRAM_CHANGE_SHIFT = 1;
 
@@ -98,35 +78,6 @@ LED modeLEDs [ModeCount] = {
 
 LiquidCrystal_I2C lcd(0x3F, 16, 2);
 
-void saveState() {
-}
-
-void refreshLCD() {
-  lcd.clear();
-    
-  if (lastPC >= 0) {
-  lcd.setCursor(0, 0);
-    lcd.print("P");
-    lcd.print(lastPC);
-    
-    lcd.setCursor(6, 0);
-    lcd.print(commandDesc[lastPC - PROGRAM_CHANGE_SHIFT]);
-  }
-
-  lcd.setCursor(12, 0);
-
-  lcd.print("M");
-  lcd.print(currentMode);
-
-  lcd.print("C");
-  lcd.print(commandChannel);
-
-
-  for (int i = 0; i < SwitchFnButtonCount; i++) {
-    lcd.setCursor(i * 3, 1);
-    lcd.print(commandDesc[currentMode * SwitchFnButtonCount + i]);
-  }
-}
 
 // Funkcja do odtwarzania sekwencji MIDI
 void playMidiSequence(int modeIndex, int buttonIndex) {
@@ -234,11 +185,6 @@ void playMidiSequence(int modeIndex, int buttonIndex) {
     }
   }
   
-  // Odczekaj chwilę, żeby informacje były widoczne
-  delay(1000);
-  
-  // Przywróć standardowy widok ekranu
-  refreshLCD();
   debug("playMidiSequence complete");
 }
 
@@ -313,7 +259,7 @@ void handleSwitchFnButton5Pressed (Button &button) {
 // If Up/Down button was released after 1 second
 // - restore previous state
 // - change mode (Function -> Loop or Loop -> Function)
-void handleHold(Button &, int delta) {
+void handleBtnUpDown(Button &, int delta) {
   int m = currentMode;
   m += delta;
   if (m == ModeCount) {
@@ -325,17 +271,17 @@ void handleHold(Button &, int delta) {
   modeLEDs[currentMode].toggle();
   currentMode = (Mode) m;
   modeLEDs[currentMode].toggle();
-  refreshLCD();
   debug("handleHold");
 }
 
-void handleHoldUp(Button &button) {
-  handleHold(button, +1) ;
+void handleBtnUp(Button &button) {
+  handleBtnUpDown(button, +1) ;
 }
 
-void handleHoldDown(Button &button) {
-  handleHold(button, -1) ;
+void handleBtnDown(Button &button) {
+  handleBtnUpDown(button, -1) ;
 }
+
 
 void setup() {
   Serial.begin(115200); // Inicjalizacja komunikacji szeregowej z wysoką prędkością
@@ -364,7 +310,7 @@ void setup() {
   commandBtns [SFB4].pressHandler(handleSwitchFnButton4Pressed);
   commandBtns [SFB5].pressHandler(handleSwitchFnButton5Pressed);
 
-  modeBtns [SMBUp].pressHandler(handleHoldUp);
+  modeBtns [SMBUp].pressHandler(handleBtnUp);
   
   Serial.println("Setup complete");
 }
