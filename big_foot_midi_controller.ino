@@ -190,41 +190,38 @@ void playMidiSequence(int modeIndex, int buttonIndex) {
 
 // Inicjalizacja przykładowych sekwencji MIDI
 void setupMidiSequences() {
-  // Tryb 0, Przycisk 0 - sekwencja 2 zdarzeń
-  sequences[0][0].length = 2;
-  // Wydarzenie 1: Control Change
-  sequences[0][0].events[0].type = 0;
-  sequences[0][0].events[0].number = 1;
-  sequences[0][0].events[0].value = 127;
-  sequences[0][0].events[0].delay = 100;
-  // Wydarzenie 2: Note On
-  sequences[0][0].events[1].type = 1;
-  sequences[0][0].events[1].number = 60; // nuta C4
-  sequences[0][0].events[1].value = 100; // velocity
-  sequences[0][0].events[1].delay = 0;
+  // Tryb 0, Przycisk 0 - sekwencja 3 zdarzenia (Program Change + nuta E4 + wyłączenie nuty)
+  sequences[0][0].length = 1;
+  // Zdarzenie 1: Program Change
+  sequences[0][0].events[0].type = 2; // Program Change
+  sequences[0][0].events[0].number = 76; // Program 77 (liczymy od )
+  sequences[0][0].events[0].value = 0; // nie używane dla PC
+  sequences[0][0].events[0].delay = 0;
   
-  // Tryb 0, Przycisk 1 - sekwencja 3 zdarzeń
-  sequences[0][1].length = 3;
-  sequences[0][1].events[0].type = 0;
-  sequences[0][1].events[0].number = 2;
-  sequences[0][1].events[0].value = 127;
-  sequences[0][1].events[0].delay = 50;
-  sequences[0][1].events[1].type = 1;
-  sequences[0][1].events[1].number = 62; // nuta D4
-  sequences[0][1].events[1].value = 100;
-  sequences[0][1].events[1].delay = 50;
-  sequences[0][1].events[2].type = 1;
-  sequences[0][1].events[2].number = 64; // nuta E4
-  sequences[0][1].events[2].value = 100;
-  sequences[0][1].events[2].delay = 0;
+  // Tryb 0, Przycisk 1 - sekwencja 3 zdarzenia (Program Change + nuta E4 + wyłączenie nuty)
+  sequences[0][1].length = 1;
+  // Zdarzenie 1: Program Change
+  sequences[0][1].events[0].type = 2; // Program Change
+  sequences[0][1].events[0].number = 77; // Program 78 (o jeden wyżej)
+  sequences[0][1].events[0].value = 0; // nie używane dla PC
+  sequences[0][1].events[0].delay = 0;
   
-  // Tryb 1, Przycisk 0 - sekwencja 1 zdarzenie
-  sequences[1][0].length = 1;
-  sequences[1][0].events[0].type = 2; // Program Change
-  sequences[1][0].events[0].number = 10;
-  sequences[1][0].events[0].value = 0; // nie używane dla PC
-  sequences[1][0].events[0].delay = 0;
-  
+
+  // Tryb 0, Przycisk 1 - sekwencja 3 zdarzenia (Program Change + nuta E4 + wyłączenie nuty)
+  sequences[0][2].length = 1;
+  // Zdarzenie 1: Program Change
+  sequences[0][2].events[0].type = 2; // Program Change
+  sequences[0][2].events[0].number = 78; // Program 78 (o jeden wyżej)
+  sequences[0][2].events[0].value = 0; // nie używane dla PC
+  sequences[0][2].events[0].delay = 0;
+
+  sequences[0][4].length = 1;
+  // Zdarzenie 1: Program Change
+  sequences[0][4].events[0].type = 2; // Program Change
+  sequences[0][4].events[0].number = 126; // Program 127 (o jeden wyżej)
+  sequences[0][4].events[0].value = 0; // nie używane dla PC
+  sequences[0][4].events[0].delay = 0;
+
   // Pozostałe sekwencje można zostawić puste (length = 0)
   // Wtedy zostanie użyte domyślne zachowanie
 }
@@ -287,10 +284,13 @@ void setup() {
   Serial.begin(115200); // Inicjalizacja komunikacji szeregowej z wysoką prędkością
   Serial.println("Big Foot MIDI Controller starting...");
   
-  MIDI.begin(9);
+  MIDI.begin(MIDI_CHANNEL_OMNI);
   modeLEDs[Mode1].on();
 
   currentMode = Mode1;
+  
+  // Ustawienie kanału MIDI na 15 (0-based to 14 w bibliotece MIDI)
+  commandChannel = 15;
   
   // Inicjalizacja sekwencji MIDI
   setupMidiSequences();
