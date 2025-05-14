@@ -5,6 +5,11 @@
 
 MIDI_CREATE_DEFAULT_INSTANCE();
 
+// Zmienne do kontroli oszczędzania energii
+unsigned long lastActivityTime = 0;
+const unsigned long IDLE_TIMEOUT = 300000; // 5 minut (w milisekundach)
+bool displayActive = true;
+
 void debug(const char *str) {
   Serial.println(str);
 }
@@ -78,9 +83,50 @@ LED modeLEDs [ModeCount] = {
 
 LiquidCrystal_I2C lcd(0x3F, 16, 2);
 
+// Funkcja do włączania wyświetlacza i diod
+void wakeUpDisplay() {
+  if (!displayActive) {
+    lcd.backlight();
+    for (int i = 0; i < ModeCount; i++) {
+      if (i == currentMode) {
+        modeLEDs[i].on();
+      }
+    }
+    displayActive = true;
+    debug("Display activated");
+  }
+  
+  // Aktualizacja czasu ostatniej aktywności
+  lastActivityTime = millis();
+}
+
+// Funkcja do wygaszania wyświetlacza i diod
+void sleepDisplay() {
+  if (displayActive) {
+    lcd.noBacklight();
+    for (int i = 0; i < ModeCount; i++) {
+      modeLEDs[i].off();
+    }
+    displayActive = false;
+    debug("Display sleeping");
+  }
+}
+
+// Funkcja do sprawdzania czasu bezczynności
+void checkIdle() {
+  unsigned long currentTime = millis();
+  unsigned long idleTime = currentTime - lastActivityTime;
+  
+  if (displayActive && idleTime > IDLE_TIMEOUT) {
+    sleepDisplay();
+  }
+}
 
 // Funkcja do odtwarzania sekwencji MIDI
 void playMidiSequence(int modeIndex, int buttonIndex) {
+  // Aktywacja wyświetlacza przy każdym użyciu
+  wakeUpDisplay();
+  
   ButtonSequence &seq = sequences[modeIndex][buttonIndex];
   
   // Informacje diagnostyczne przez Serial
@@ -211,9 +257,18 @@ void setupMidiSequences() {
   sequences[0][2].length = 1;
   // Zdarzenie 1: Program Change
   sequences[0][2].events[0].type = 2; // Program Change
-  sequences[0][2].events[0].number = 78; // Program 78 (o jeden wyżej)
+  sequences[0][2].events[0].number = 78; // Program 79 (o jeden wyżej)
   sequences[0][2].events[0].value = 0; // nie używane dla PC
   sequences[0][2].events[0].delay = 0;
+
+    // Tryb 0, Przycisk 1 - sekwencja 3 zdarzenia (Program Change + nuta E4 + wyłączenie nuty)
+  sequences[0][3].length = 1;
+  // Zdarzenie 1: Program Change
+  sequences[0][3].events[0].type = 2; // Program Change
+  sequences[0][3].events[0].number = 79; // Program 80 (o jeden wyżej)
+  sequences[0][3].events[0].value = 0; // nie używane dla PC
+  sequences[0][3].events[0].delay = 0;
+
 
   sequences[0][4].length = 1;
   // Zdarzenie 1: Program Change
@@ -228,6 +283,7 @@ void setupMidiSequences() {
 
 // Handle button which depending on its id, loop number/functions set sends connected midi message
 void handleSwitchFnButtonPressed (Button &button, int buttonId) {
+  wakeUpDisplay(); // Aktywacja wyświetlacza przy naciśnięciu przycisku
   playMidiSequence(currentMode, buttonId);
   debug("handleSwitchFnButtonPressed");
 }
@@ -257,6 +313,8 @@ void handleSwitchFnButton5Pressed (Button &button) {
 // - restore previous state
 // - change mode (Function -> Loop or Loop -> Function)
 void handleBtnUpDown(Button &, int delta) {
+  wakeUpDisplay(); // Aktywacja wyświetlacza przy naciśnięciu przycisku
+  
   int m = currentMode;
   m += delta;
   if (m == ModeCount) {
@@ -278,7 +336,6 @@ void handleBtnUp(Button &button) {
 void handleBtnDown(Button &button) {
   handleBtnUpDown(button, -1) ;
 }
-
 
 void setup() {
   Serial.begin(115200); // Inicjalizacja komunikacji szeregowej z wysoką prędkością
@@ -304,6 +361,7 @@ void setup() {
   lcd.setCursor(0, 1);
   lcd.print("Hydrogen Controller");
 
+  // Podłącz obsługę przycisków
   commandBtns [SFB1].pressHandler(handleSwitchFnButton1Pressed);
   commandBtns [SFB2].pressHandler(handleSwitchFnButton2Pressed);
   commandBtns [SFB3].pressHandler(handleSwitchFnButton3Pressed);
@@ -312,20 +370,29 @@ void setup() {
 
   modeBtns [SMBUp].pressHandler(handleBtnUp);
   
+  // Inicjalizacja czasu ostatniej aktywności
+  lastActivityTime = millis();
+  
   Serial.println("Setup complete");
 }
 
 void loop() {
+  // Sprawdź czas bezczynności
+  checkIdle();
 
-  int f = 0;
-  for (; f < SwitchFnButtonCount; f++) {
-    if ( commandBtns[f].uniquePress() ) {
+  // Sprawdź wszystkie przyciski funkcyjne
+  for (int f = 0; f < SwitchFnButtonCount; f++) {
+    if (commandBtns[f].uniquePress()) {
+      wakeUpDisplay(); // Aktywacja wyświetlacza przy naciśnięciu przycisku
     }
   }
-  f = 0;
-  for (; f < SwitchModeButtonCount; f++) {
-    if ( modeBtns[f].uniquePress() ) {
+  
+  // Sprawdź przyciski zmiany trybu
+  for (int f = 0; f < SwitchModeButtonCount; f++) {
+    if (modeBtns[f].uniquePress()) {
+      wakeUpDisplay(); // Aktywacja wyświetlacza przy naciśnięciu przycisku
     }
   }
-
+  
+  delay(10); // Krótki delay
 }
